@@ -72,7 +72,7 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(GLIB REQUIRED glib-2.0)
 
 # Add the wireshark library
-set(WIRESHARK_EXTERNAL_PATH /opt/wireshark)
+set(WIRESHARK_EXTERNAL_PATH /root/wireshark)
 set(WIRESHARK_BUILD_PATH ${WIRESHARK_EXTERNAL_PATH}/build)
 set(WIRESHARK_RUN_PATH ${WIRESHARK_BUILD_PATH}/run)
 
