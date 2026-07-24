@@ -40,7 +40,9 @@ class rlc_tester : public srsue::pdcp_interface_rlc, public srsue::rrc_interface
 public:
   rlc_tester()
   {
-    bzero(sdus, sizeof(sdus));
+    // never use bzero()/memset() on non-trivial C++ objects
+    // bzero(sdus, sizeof(sdus));
+    std::fill(std::begin(sdus), std::end(sdus), nullptr);
     n_sdus           = 0;
     expected_sdu_len = 0;
   }
