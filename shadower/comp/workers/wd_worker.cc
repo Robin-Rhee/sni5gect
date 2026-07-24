@@ -301,7 +301,7 @@ void WDWorker::process(uint8_t*    data,
   }
 
   if (direction == DL) {
-    logger.info(GREEN "%u [S:%u] --> %s" RESET, rnti, slot_idx, safe_info);
+    logger.info(WHITE "%u [S:%u] --> %s" RESET, rnti, slot_idx, safe_info);
   } else {
     logger.info(BLUE "%u [S:%u] <-- %s" RESET, rnti, slot_idx, safe_info);
   }

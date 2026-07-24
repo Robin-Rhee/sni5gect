@@ -58,10 +58,10 @@ bool compare_two_buffers(uint8_t* buffer1, uint32_t len1, uint8_t* buffer2, uint
     }
   }
   for (uint32_t i = len; i < len1; i++) {
-    oss1 << GREEN "0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(buffer1[i]) << RESET ", ";
+    oss1 << WHITE "0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(buffer1[i]) << RESET ", ";
   }
   for (uint32_t i = len; i < len2; i++) {
-    oss2 << GREEN "0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(buffer2[i]) << RESET ", ";
+    oss2 << WHITE "0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(buffer2[i]) << RESET ", ";
   }
   printf("%s\n", oss1.str().c_str());
   printf("%s\n", oss2.str().c_str());

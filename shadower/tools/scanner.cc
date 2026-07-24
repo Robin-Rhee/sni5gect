@@ -353,7 +353,7 @@ int main(int argc, char* argv[])
          asynchronously after on_cell_found returns, so the parameters must not
          be referenced by address. */
       bc_worker->on_sib1_found = [&, ncellid, ssb_freq](asn1::rrc_nr_r17::sib1_s& sib1) {
-        logger.info(GREEN "SIB1 decoded" RESET);
+        logger.info(WHITE "SIB1 decoded" RESET);
         asn1::json_writer jw;
         sib1.to_json(jw);
         logger.info("=== SIB1 ===\n%s\n", jw.to_string().c_str());

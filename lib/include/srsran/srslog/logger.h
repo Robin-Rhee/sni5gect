@@ -185,12 +185,16 @@ inline const char* basic_level_to_string(basic_levels level)
 {
   switch (level) {
     case basic_levels::debug:
+      // Cyan
       return "\033[36mDEBUG\033[0m";
     case basic_levels::info:
-      return "\033[32mINFO\033[0m";
+      // White
+      return "\033[37mINFO\033[0m";
     case basic_levels::warning:
+      // Yellow
       return "\033[33mWARNING\033[0m";
     case basic_levels::error:
+      // Red
       return "\033[31mERROR\033[0m";
     default:
       break;

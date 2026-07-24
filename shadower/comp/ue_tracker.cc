@@ -82,7 +82,7 @@ void UETracker::activate(uint16_t rnti_, srsran_rnti_type_t rnti_type_, uint32_t
     ue_ul_worker->begin();
     ue_ul_worker->start(0);
   }
-  logger.info(GREEN "UETracker %s activated" RESET, name.c_str());
+  logger.info(WHITE "UETracker %s activated" RESET, name.c_str());
 }
 
 /* Deactivate the current UETracker */
