@@ -87,7 +87,7 @@ public:
     static uint64_t prev_samples = 0;
     static double prev_timestamp = 0.0;
 
-    constexpr double sample_rate = 30.72e6;
+    constexpr double sample_rate = config.sample_rate;
 
     try {
       int samples_recv =

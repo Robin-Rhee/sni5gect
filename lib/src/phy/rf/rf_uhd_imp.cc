@@ -1308,7 +1308,7 @@ int rf_uhd_recv_with_time_multi(void*    h,
 
   static auto previous_host_time = std::chrono::steady_clock::now();
 
-  constexpr double DIAG_SAMPLE_RATE = 30.72e6;
+  constexpr double DIAG_SAMPLE_RATE = handler->rx_rate;
 
 
 
