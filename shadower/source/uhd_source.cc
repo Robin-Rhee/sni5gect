@@ -1,6 +1,10 @@
 #include "shadower/source/source.h"
 #include "shadower/utils/constants.h"
 #include "srsran/radio/radio.h"
+#include <cmath>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
 
 class UHDSource final : public Source
 {
@@ -60,17 +64,111 @@ public:
     }
   }
 
+  // int recv(cf_t** buffer, uint32_t nof_samples, srsran_timestamp_t* ts) override
+  // {
+  //   /* Start the rx stream */
+  //   try {
+  //     int samples_recv =
+  //         srsran_rf_recv_with_time_multi(rf.get(), (void**)buffer, nof_samples, false, &ts->full_secs, &ts->frac_secs);
+  //     if (samples_recv == SRSRAN_ERROR) {
+  //       return -1;
+  //     }
+  //     return samples_recv;
+  //   } catch (const std::exception& e) {
+  //     return -1;
+  //   }
+  // }
+
   int recv(cf_t** buffer, uint32_t nof_samples, srsran_timestamp_t* ts) override
   {
-    /* Start the rx stream */
+    static uint64_t rx_count = 0;
+    static bool have_prev = false;
+
+    static uint64_t prev_samples = 0;
+    static double prev_timestamp = 0.0;
+
+    constexpr double sample_rate = 30.72e6;
+
     try {
       int samples_recv =
-          srsran_rf_recv_with_time_multi(rf.get(), (void**)buffer, nof_samples, false, &ts->full_secs, &ts->frac_secs);
+          srsran_rf_recv_with_time_multi(
+              rf.get(),
+              (void**)buffer,
+              nof_samples,
+              false,
+              &ts->full_secs,
+              &ts->frac_secs);
+
       if (samples_recv == SRSRAN_ERROR) {
+        std::cerr << "[UHD-RX] ERROR: srsran_rf_recv_with_time_multi() returned SRSRAN_ERROR\n";
         return -1;
       }
+
+      ++rx_count;
+
+      // Timestamp of the first sample in this received buffer.
+      const double current_timestamp =
+          static_cast<double>(ts->full_secs) +
+          static_cast<double>(ts->frac_secs);
+
+      // Expected timestamp based on the previous buffer.
+      double expected_timestamp = 0.0;
+      double timestamp_gap = 0.0;
+      double timestamp_gap_samples = 0.0;
+
+      if (have_prev) {
+        expected_timestamp =
+            prev_timestamp +
+            static_cast<double>(prev_samples) / sample_rate;
+
+        timestamp_gap =
+            current_timestamp - expected_timestamp;
+
+        timestamp_gap_samples =
+            timestamp_gap * sample_rate;
+      }
+
+      /*
+      * Print:
+      *   - the first 20 buffers
+      *   - any buffer whose timestamp is discontinuous by > 1 sample
+      */
+      if (rx_count <= 20 ||
+          (have_prev && std::abs(timestamp_gap_samples) > 1.0)) {
+
+        std::cout << std::fixed << std::setprecision(12);
+
+        std::cout
+            << "[UHD-RX]"
+            << " count=" << rx_count
+            << " requested=" << nof_samples
+            << " received=" << samples_recv
+            << " timestamp=" << current_timestamp;
+
+        if (have_prev) {
+          std::cout
+              << " expected=" << expected_timestamp
+              << " gap=" << timestamp_gap * 1e6
+              << " us"
+              << " (" << timestamp_gap_samples
+              << " samples)";
+        }
+
+        std::cout << std::endl;
+      }
+
+      prev_timestamp = current_timestamp;
+      prev_samples = static_cast<uint64_t>(samples_recv);
+      have_prev = true;
+
       return samples_recv;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e) {
+      std::cerr
+          << "[UHD-RX] Exception in recv(): "
+          << e.what()
+          << std::endl;
+
       return -1;
     }
   }

@@ -36,6 +36,10 @@
 #include "rf_uhd_generic.h"
 #include "rf_uhd_imp.h"
 
+#include <chrono>
+#include <iomanip>
+#include <iostream>
+
 #ifdef UHD_ENABLE_RFNOC
 #include "rf_uhd_rfnoc.h"
 #endif // UHD_ENABLE_RFNOC
@@ -635,7 +639,9 @@ static int uhd_init(rf_uhd_handler_t* handler, char* args, uint32_t nof_channels
 
   // Select same synchronization source only if more than one channel is opened
   std::string sync_src = "internal";
-  if (nof_channels > 1) {
+  if (device_addr.has_key("sync")) {
+    sync_src = device_addr.pop("sync");
+  } else if (nof_channels > 1) {
     sync_src = clock_src;
   }
 
@@ -1287,6 +1293,27 @@ int rf_uhd_recv_with_time_multi(void*    h,
                                 double*  frac_secs)
 {
   rf_uhd_handler_t*            handler = (rf_uhd_handler_t*)h;
+
+
+
+
+
+  // ---------------------------------------------------------------
+  // Diagnostic state.
+  // ---------------------------------------------------------------
+  static uint64_t rx_call_count = 0;
+  static bool     have_previous_block = false;
+  static double   previous_timestamp = 0.0;
+  static uint64_t previous_samples = 0;
+
+  static auto previous_host_time = std::chrono::steady_clock::now();
+
+  constexpr double DIAG_SAMPLE_RATE = 30.72e6;
+
+
+
+
+  
   std::unique_lock<std::mutex> lock(handler->rx_mutex);
   size_t                       rxd_samples       = 0;
   size_t                       rxd_samples_total = 0;
@@ -1325,10 +1352,132 @@ int rf_uhd_recv_with_time_multi(void*    h,
       }
     }
 
-    if (handler->uhd->receive(buffs_ptr, num_rx_samples, md, 1.0, false, rxd_samples) != UHD_ERROR_NONE) {
+    // if (handler->uhd->receive(buffs_ptr, num_rx_samples, md, 1.0, false, rxd_samples) != UHD_ERROR_NONE) {
+    //   log_rx_error(handler);
+    //   return SRSRAN_ERROR;
+    // }
+
+
+
+
+    // ---------------------------------------------------------------
+    // Measure host-side interval between calls to UHD receive.
+    // ---------------------------------------------------------------
+    const auto host_now = std::chrono::steady_clock::now();
+
+    const double host_gap_ms =
+        std::chrono::duration<double, std::milli>(
+            host_now - previous_host_time).count();
+
+    previous_host_time = host_now;
+
+    // ---------------------------------------------------------------
+    // Actual UHD receive.
+    // ---------------------------------------------------------------
+    const int receive_ret =
+        handler->uhd->receive(
+            buffs_ptr,
+            num_rx_samples,
+            md,
+            1.0,
+            false,
+            rxd_samples);
+
+    ++rx_call_count;
+
+    // ---------------------------------------------------------------
+    // Calculate timestamp continuity.
+    // ---------------------------------------------------------------
+    double current_timestamp = 0.0;
+    double expected_timestamp = 0.0;
+    double timestamp_gap = 0.0;
+    double timestamp_gap_samples = 0.0;
+
+    if (md.has_time_spec) {
+      current_timestamp =
+          md.time_spec.get_full_secs() +
+          md.time_spec.get_frac_secs();
+
+      if (have_previous_block) {
+        expected_timestamp =
+            previous_timestamp +
+            static_cast<double>(previous_samples) / DIAG_SAMPLE_RATE;
+
+        timestamp_gap =
+            current_timestamp - expected_timestamp;
+
+        timestamp_gap_samples =
+            timestamp_gap * DIAG_SAMPLE_RATE;
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Determine whether this is diagnostically interesting.
+    // ---------------------------------------------------------------
+    const bool metadata_error =
+        md.error_code !=
+        uhd::rx_metadata_t::ERROR_CODE_NONE;
+
+    const bool timestamp_discontinuity =
+        have_previous_block &&
+        md.has_time_spec &&
+        std::abs(timestamp_gap_samples) > 1.0;
+
+    const bool host_stall =
+        host_gap_ms > 20.0;
+
+    // Print first few calls, and all suspicious events.
+    if (rx_call_count <= 10 ||
+        metadata_error ||
+        timestamp_discontinuity ||
+        host_stall) {
+
+      std::cout << std::fixed
+                << std::setprecision(12);
+
+      std::cout
+          << "[UHD-DIAG]"
+          << " call=" << rx_call_count
+          << " requested=" << num_rx_samples
+          << " received=" << rxd_samples
+          << " ts=" << current_timestamp
+          << " host_gap=" << host_gap_ms
+          << " ms"
+          << " err=" << md.strerror()
+          << " out_of_sequence="
+          << (md.out_of_sequence ? "YES" : "NO");
+
+      if (have_previous_block && md.has_time_spec) {
+        std::cout
+            << " expected_ts=" << expected_timestamp
+            << " timestamp_gap="
+            << timestamp_gap * 1e6
+            << " us"
+            << " gap_samples="
+            << timestamp_gap_samples;
+      }
+
+      std::cout << std::endl;
+    }
+
+    // ---------------------------------------------------------------
+    // Preserve the original behavior.
+    // ---------------------------------------------------------------
+    if (receive_ret != UHD_ERROR_NONE) {
       log_rx_error(handler);
       return SRSRAN_ERROR;
     }
+
+    // Save state for the next receive.
+    if (md.has_time_spec) {
+      previous_timestamp = current_timestamp;
+      previous_samples = rxd_samples;
+      have_previous_block = true;
+    }
+
+
+
+
 
     // Save timespec for first block
     if (rxd_samples_total == 0) {
