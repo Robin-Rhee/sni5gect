@@ -55,6 +55,8 @@ int parse_args(ShadowerConfig& config, int argc, char* argv[])
   std::string scs_ssb_str    = node_as<std::string>(cell, "scs_ssb", "30");
   config.scs_ssb             = srsran_subcarrier_spacing_from_str(scs_ssb_str.c_str());
 
+  band_helper.set_scs(config.scs_common);
+
   // Convert DL arfcn to frequency
   config.dl_arfcn = node_as<uint32_t>(cell, "dl_arfcn", 0);
   assert(0 != config.dl_arfcn);

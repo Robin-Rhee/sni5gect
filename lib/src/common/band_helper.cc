@@ -146,7 +146,7 @@ double srsran_band_helper::get_abs_freq_point_a_from_center_freq(uint32_t nof_pr
     return center_freq - total_bandwidth_hz / 2;
   }
   return center_freq -
-         (nof_prb / 2 * SRSRAN_SUBC_SPACING_NR(srsran_subcarrier_spacing_t::srsran_subcarrier_spacing_15kHz) *
+         (1.0 * nof_prb / 2 * SRSRAN_SUBC_SPACING_NR(srsran_subcarrier_spacing_t::srsran_subcarrier_spacing_15kHz) *
           SRSRAN_NRE);
 }
 
