@@ -1,10 +1,7 @@
 #include "shadower/source/source.h"
 #include "shadower/utils/constants.h"
 #include "srsran/radio/radio.h"
-#include <cmath>
-#include <cstdint>
 #include <iomanip>
-#include <iostream>
 
 class UHDSource final : public Source
 {
@@ -33,6 +30,8 @@ public:
     if (srsran_rf_open_multi(rf.get(), (char*)config.source_params.c_str(), nof_channels)) {
       throw std::runtime_error("Failed to open radio");
     }
+
+    
 
     /* setup the rf interface */
     srsran_rf_set_tx_srate(rf.get(), config.sample_rate);
@@ -87,7 +86,9 @@ public:
     static uint64_t prev_samples = 0;
     static double prev_timestamp = 0.0;
 
-    constexpr double sample_rate = config.sample_rate;
+    // std::cout << "##CR## config.sample_rate = "
+    //       << config.sample_rate << std::endl;
+    const double sample_rate = config.sample_rate;
 
     try {
       int samples_recv =
